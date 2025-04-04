@@ -6,12 +6,15 @@ import os
 TOKEN = '7129478028:AAGChwAV75-YgOAlkj_XWfU9nO0vc3mqiJY'
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Send me a video link from YouTube, Facebook or Instagram.")
+    await update.message.reply_text("Send me a video link from YouTube, Facebook, or Instagram.")
 
 def download_video(url):
     ydl_opts = {
         'outtmpl': 'downloads/%(title)s.%(ext)s',
         'quiet': True,
+        'extract_audio': False,
+        'noplaylist': True,  # This ensures only a single video is downloaded, not a playlist.
+        'force_generic_extractor': False  # This ensures yt-dlp uses the best extractor for the URL
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -31,7 +34,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.delete()
 
     elif 'instagram.com' in url:
-        await update.message.reply_text("Instagram video downloading is restricted. Try using a public video or third-party API.")
+        await update.message.reply_text("Downloading Instagram video...")
+        try:
+            file_path = download_video(url)
+            await update.message.reply_video(video=open(file_path, 'rb'))
+            os.remove(file_path)
+            
+            # Delete the user's message with the URL after uploading the video
+            await update.message.delete()
+        except Exception as e:
+            await update.message.reply_text(f"Error downloading Instagram video: {str(e)}")
+
     else:
         await update.message.reply_text("Unsupported link.")
 
